@@ -20,6 +20,8 @@ class Entity(pyg.sprite.DirtySprite):
         self.rect = self.image.get_rect()
         self.group = pyg.sprite.GroupSingle()
         
+        self.rot_an = 90;
+        
         self.velocity = pyg.Vector2(velocity)
         
         self.group.add(self)
@@ -40,7 +42,7 @@ class Entity(pyg.sprite.DirtySprite):
     def rotate_towards_mouse(self):
         mouse_pos = pyg.mouse.get_pos()
         rel_x, rel_y = mouse_pos[0] - self.rect.centerx, mouse_pos[1] - self.rect.centery
-        angle = (180 / math.pi) * -math.atan2(rel_y, rel_x) - 90
+        angle = (180 / math.pi) * -math.atan2(rel_y, rel_x) - self.rot_an
         self.image = pyg.transform.rotate(pyg.image.load(self.image_path).convert_alpha(), angle)
         self.rect = self.image.get_rect(center=self.rect.center)
     
@@ -57,6 +59,7 @@ pyg.mouse.set_visible(True)
         
 player = Entity("assets/sprites/Player.png", (0, 0))
 knife = Entity("assets/sprites/knife.png", (0, 0))
+knife.rot_an = 45
 clock = pyg.time.Clock()
 
 
