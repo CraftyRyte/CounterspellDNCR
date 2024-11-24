@@ -8,8 +8,10 @@ import random
 
 pyg.init()
 
-def blit_text(surface: pyg.Surface, text, pos, color=pyg.Color('black')):
-    font = pyg.font.SysFont("Arial", 32)
+all_entities = []
+
+def blit_text(surface: pyg.Surface, text, pos, color=pyg.Color('black'), font_size=32):
+    font = pyg.font.SysFont("Arial", font_size)
     text = font.render(text, True, color)
     surface.blit(text, pos)
 
@@ -27,6 +29,7 @@ class Entity(pyg.sprite.DirtySprite):
         self.velocity = pyg.Vector2(velocity)
         
         self.group.add(self)
+        all_entities.append(self)
     
     def update(self):
         self.move()
@@ -62,6 +65,24 @@ class Henchman(Entity):
         super().__init__(image_path, velocity, *groups)
         self.prev_time = time.time()
         self.type = "henchman"
+    def update(self):
+        for r in all_entities:
+            if r.type == "knife":
+                if self.rect.colliderect(r.rect):
+                    if self in all_entities:
+                        all_entities.remove(self)
+                    self.kill()
+                    break
+        self.move()
+        if self in self.group:
+            self.group.remove(self)
+            self.group.update()
+            self.group.add(self)
+        else:
+            self.group.update()
+        self.group.draw(pyg.display.get_surface())
+        
+    
 
 class SpawnerOfHenchmen:
     def __init__(self):
@@ -79,7 +100,7 @@ class SpawnerOfHenchmen:
             direction = pyg.Vector2(player.rect.center) - hench_pos
             if direction.length() > 0:
                 direction = direction.normalize()
-            new_henchman.velocity = direction * 250 * dt
+            new_henchman.velocity = direction * 300 * dt
             
             self.henchmen.append(new_henchman)
             
@@ -111,7 +132,7 @@ def move_tha_player(dt):
     direction = pyg.Vector2(mouse_pos) - player_pos
     if direction.length() > 0:
         direction = direction.normalize()
-    velocity = 200
+    velocity = 250
     player.velocity = direction * velocity * dt
 
 def make_tha_knife_throw(dt):
@@ -121,11 +142,13 @@ def make_tha_knife_throw(dt):
     direction = pyg.Vector2(mouse_pos) - player_pos
     if direction.length() > 0:
         direction = direction.normalize()
-    velocity = 500
+    velocity = 600
     new_knife = knife.instantiate()
+    new_knife.type = "knife"
     new_knife.rect.center = player.rect.center
     new_knife.velocity = direction * velocity * dt
     new_knife.rotate_towards_mouse()
+    all_entities.append(new_knife)
     runtime_objs.append(new_knife)
     
 runtime_objs = []
@@ -147,11 +170,18 @@ while is_running:
     player.rotate_towards_mouse()
     move_tha_player(dt)
 
+    for ent in all_entities:
+        if ent.type == "henchman":
+            if player.rect.colliderect(ent.rect):
+                if player in all_entities:
+                    all_entities.remove(player)
+                player.kill()
     spawner.update(dt)
 
     for obj in runtime_objs:
         obj.update()
     blit_text(screen, str(dt), (10, 10))  
+    blit_text(screen, str(all_entities), (10, 30), font_size=12)
     pyg.display.update()
             
             
