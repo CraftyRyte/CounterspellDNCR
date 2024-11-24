@@ -1,189 +1,218 @@
 import pygame as pyg
-import dataclasses
 import sys
 import time
 import math
-import copy
 import random
+from pygame.math import Vector2
 
+# Initialize Pygame
 pyg.init()
+pyg.mixer.init()
 
+# Screen settings
+WIDTH, HEIGHT = 900, 500
+screen = pyg.display.set_mode((WIDTH, HEIGHT))
+clock = pyg.time.Clock()
+
+knife_t = "knife_throw.mp3"
+ezio_s = "ezio_scream.mp3"
+henchman_s = "henchman_scream.mp3"
+ 
+# Global variables
 all_entities = []
+runtime_objs = []
 
-def blit_text(surface: pyg.Surface, text, pos, color=pyg.Color('black'), font_size=32):
+# Helper function to render text on screen
+def blit_text(surface, text, pos, color=pyg.Color('black'), font_size=32):
     font = pyg.font.SysFont("Arial", font_size)
-    text = font.render(text, True, color)
-    surface.blit(text, pos)
+    text_surf = font.render(text, True, color)
+    surface.blit(text_surf, pos)
 
+# Add the Camera class
+class Camera:
+    def __init__(self):
+        self.offset = Vector2(0, 0)
+    
+    def update(self, target):
+        # Center the camera on the target (player)
+        self.offset.x = target.rect.centerx - WIDTH / 2
+        self.offset.y = target.rect.centery - HEIGHT / 2
+
+# Entity base class
 class Entity(pyg.sprite.DirtySprite):
     def __init__(self, image_path, velocity, *groups):
         super().__init__(*groups)
         self.image = pyg.image.load(image_path).convert_alpha()
         self.image_path = image_path
         self.rect = self.image.get_rect()
-        self.group = pyg.sprite.GroupSingle()
-        
-        self.rot_an = 90;
+        self.velocity = Vector2(velocity)
         self.type = 'normal'
-        
-        self.velocity = pyg.Vector2(velocity)
-        
-        self.group.add(self)
+        self.is_alive = True
+        self.mask = pyg.mask.from_surface(self.image)
         all_entities.append(self)
-    
+
     def update(self):
-        self.move()
-        if self in self.group:
-            self.group.remove(self)
-            self.group.update()
-            self.group.add(self)
-        else:
-            self.group.update()
-        self.group.draw(pyg.display.get_surface())
+        self.move()               
+        self.draw(camera)
 
     def move(self):
         self.rect.center += self.velocity
 
-    def rotate_towards_mouse(self):
-        mouse_pos = pyg.mouse.get_pos()
-        rel_x, rel_y = mouse_pos[0] - self.rect.centerx, mouse_pos[1] - self.rect.centery
-        angle = (180 / math.pi) * -math.atan2(rel_y, rel_x) - self.rot_an
+    def draw(self, camera):
+        # Adjust position based on camera offset
+        adjusted_rect = self.rect.move(-camera.offset.x, -camera.offset.y)
+        screen.blit(self.image, adjusted_rect)
+
+    def rotate_towards(self, target_pos):
+        rel_x, rel_y = target_pos[0] - self.rect.centerx, target_pos[1] - self.rect.centery
+        angle = (180 / math.pi) * -math.atan2(rel_y, rel_x) - 90
         self.image = pyg.transform.rotate(pyg.image.load(self.image_path).convert_alpha(), angle)
         self.rect = self.image.get_rect(center=self.rect.center)
-        
-    def rotate_towards(self, pos):
-        rel_x, rel_y = pos[0] - self.rect.centerx, pos[1] - self.rect.centery
-        angle = (180 / math.pi) * -math.atan2(rel_y, rel_x) - self.rot_an
-        self.image = pyg.transform.rotate(pyg.image.load(self.image_path).convert_alpha(), angle)
-        self.rect = self.image.get_rect(center=self.rect.center)
-        
+        self.mask = pyg.mask.from_surface(self.image)
+
     def instantiate(self):
-        return copy.deepcopy(self)
+        return self.__class__(self.image_path, self.velocity)
 
+    def kill(self):
+        self.is_alive = False
+        super().kill()
+
+# Henchman subclass
 class Henchman(Entity):
-    def __init__(self, image_path, velocity, *groups):
-        super().__init__(image_path, velocity, *groups)
-        self.prev_time = time.time()
+    def __init__(self, image_path, velocity):
+        super().__init__(image_path, velocity)
         self.type = "henchman"
-    def update(self):
-        for r in all_entities:
-            if r.type == "knife":
-                if self.rect.colliderect(r.rect):
-                    if self in all_entities:
-                        all_entities.remove(self)
-                    self.kill()
-                    break
-        self.move()
-        if self in self.group:
-            self.group.remove(self)
-            self.group.update()
-            self.group.add(self)
-        else:
-            self.group.update()
-        self.group.draw(pyg.display.get_surface())
-        
-    
+        # Reduce the size of the rect to make the hitbox smaller
+        self.rect.inflate_ip(-10, -10)
 
+    def update(self):
+        # Use per-pixel collision detection
+        if self.rect.colliderect(player.rect):
+            pyg.mixer.music.load(ezio_s)
+            pyg.mixer.music.play()
+            all_entities.remove(self)
+            self.kill()
+        for obj in all_entities:
+            if obj.type == "knife" and self.rect.colliderect(obj.rect):
+                pyg.mixer.music.load(henchman_s)
+                pyg.mixer.music.play()
+                all_entities.remove(self)
+                all_entities.remove(obj)
+                if obj in runtime_objs:
+                    runtime_objs.remove(obj)
+                obj.kill()
+                self.kill()
+                break
+        self.move()
+        self.rotate_towards(player.rect.center)
+        direction = (Vector2(player.rect.center) - Vector2(self.rect.center)).normalize()
+        self.velocity = direction * 620 * dt
+        adjusted_rect = self.rect.move(-camera.offset.x, -camera.offset.y)
+        self.draw(camera)
+
+# Spawner class for generating henchmen
 class SpawnerOfHenchmen:
     def __init__(self):
         self.henchmen = []
-        self.prev_time = time.time()
         self.spawn_rate = 3
-    
+        self.prev_time = time.time()
+
     def update(self, dt):
         if time.time() - self.prev_time > self.spawn_rate:
             new_henchman = Henchman("assets/sprites/henchman1.png", (0, 0))
-            new_henchman.rect.center = (random.randint(0, int(WIDTH)), 0)
+            new_henchman.rect.center = (random.randint(0, WIDTH), 0)
             new_henchman.rotate_towards(player.rect.center)
-            
-            hench_pos = pyg.Vector2(new_henchman.rect.center)
-            direction = pyg.Vector2(player.rect.center) - hench_pos
-            if direction.length() > 0:
-                direction = direction.normalize()
-            new_henchman.velocity = direction * 300 * dt
-            
+            direction = (Vector2(player.rect.center) - Vector2(new_henchman.rect.center)).normalize()
+            new_henchman.velocity = direction * 620 * dt
             self.henchmen.append(new_henchman)
-            
-            
+            all_entities.append(new_henchman)
             self.prev_time = time.time()
-        for henchman in self.henchmen:
-            henchman.update()
 
-is_running = True
-WIDTH = 900
-HEIGHT = 500
-screen = pyg.display.set_mode((WIDTH, HEIGHT))
+        # Update henchmen and remove any that are killed
+        for henchman in self.henchmen[:]:
+            if not henchman.is_alive:
+                self.henchmen.remove(henchman)
+            else:
+                henchman.update()
 
-pyg.event.set_grab(True)
-pyg.mouse.set_visible(True)
-        
-player = Entity("assets/sprites/Player.png", (0, 0))
-player.type = "player"
-henchman1 = Entity("assets/sprites/henchman1.png", (0, 0))
-knife = Entity("assets/sprites/knife.png", (0, 0))
-knife.type = "knife"
-knife.rot_an = 45
-clock = pyg.time.Clock()
-
-
-def move_tha_player(dt):
+# Player control functions
+def move_player(dt):
     mouse_pos = pyg.mouse.get_pos()
-    player_pos = pyg.Vector2(player.rect.center)
-    direction = pyg.Vector2(mouse_pos) - player_pos
-    if direction.length() > 0:
-        direction = direction.normalize()
-    velocity = 250
-    player.velocity = direction * velocity * dt
+    world_mouse_pos = Vector2(mouse_pos) + camera.offset
+    direction_vector = world_mouse_pos - Vector2(player.rect.center)
+    if direction_vector.length() != 0:
+        direction = direction_vector.normalize()
+        player.velocity = direction * 250 * dt
+    else:
+        player.velocity = Vector2(0, 0)
 
-def make_tha_knife_throw(dt):
-    global knife
+def throw_knife(dt):
     mouse_pos = pyg.mouse.get_pos()
-    player_pos = pyg.Vector2(player.rect.center)
-    direction = pyg.Vector2(mouse_pos) - player_pos
-    if direction.length() > 0:
-        direction = direction.normalize()
-    velocity = 600
+    world_mouse_pos = Vector2(mouse_pos) + camera.offset
+    direction = (world_mouse_pos - Vector2(player.rect.center)).normalize()
     new_knife = knife.instantiate()
-    new_knife.type = "knife"
     new_knife.rect.center = player.rect.center
-    new_knife.velocity = direction * velocity * dt
-    new_knife.rotate_towards_mouse()
+    new_knife.type = "knife"
+    new_knife.velocity = direction * 1200 * dt
+    new_knife.rotate_towards(world_mouse_pos)
     all_entities.append(new_knife)
     runtime_objs.append(new_knife)
-    
-runtime_objs = []
+    pyg.mixer.music.load(knife_t)
+    pyg.mixer.music.play()
+
+
+# Instantiate player and other entities
+player = Entity("assets/sprites/Player.png", (0, 0))
+player.type = "player"
+knife = Entity("assets/sprites/knife.png", (0, 0))
+knife.type = "knife"
 spawner = SpawnerOfHenchmen()
+spawner.spawn_rate = 2
 
+# Instantiate the camera
+camera = Camera()
+
+# Main game loop
+is_running = True
 while is_running:
+    dt = clock.tick(60) / 1000  # Delta time for frame-rate independent movement
 
-    dt = clock.tick(60) / 1000
+    # Event handling
     for event in pyg.event.get():
         if event.type == pyg.QUIT:
             is_running = False
-        if event.type == pyg.MOUSEBUTTONDOWN:
-            if event.button == 1:
-                make_tha_knife_throw(dt)
+        elif event.type == pyg.MOUSEBUTTONDOWN and event.button == 1:
+            throw_knife(dt)
 
+    # Update entities and handle player movement
+    camera.update(player)
     screen.fill('white')
-            
+    screen.blit(pyg.image.load("Sprite-0007.png"), (0, 0))
+    if dt > 0:
+        move_player(dt)
     player.update()
-    player.rotate_towards_mouse()
-    move_tha_player(dt)
+    world_mouse_pos = Vector2(pyg.mouse.get_pos()) + camera.offset
+    player.rotate_towards(world_mouse_pos)
+    player.draw(camera)
 
-    for ent in all_entities:
-        if ent.type == "henchman":
-            if player.rect.colliderect(ent.rect):
-                if player in all_entities:
-                    all_entities.remove(player)
-                player.kill()
+
+    # Update henchmen and check for collisions with the player
     spawner.update(dt)
+    for ent in all_entities:
+        if ent.type == "henchman" and pyg.sprite.collide_mask(player, ent):
+            if player in all_entities:
+                all_entities.remove(player)
+            player.kill()
 
+    # Update runtime objects (like knives)
     for obj in runtime_objs:
         obj.update()
-    blit_text(screen, str(dt), (10, 10))  
-    blit_text(screen, str(all_entities), (10, 30), font_size=12)
+        obj.draw(camera)
+
+    # Display debug info
+    blit_text(screen, f"FPS: {clock.get_fps():.2f}", (10, 10))
     pyg.display.update()
-            
-            
+
+# Clean up
 pyg.quit()
-sys.exit(69)
+sys.exit()
