@@ -2,11 +2,10 @@ from . import entity
 import pygame as pyg
 
 class Player(entity.Entity):
-    def __init__(this, position, image_path, speed_mag):
-        super().__init__(position, image_path)
-        this.magnitude_speed = speed_mag
+    def __init__(this, position, image_path, speed_mag, *groups):
+        super().__init__(position, image_path, speed_mag, *groups)
     
-    def update(this, dt):
+    def update(this, dt, __test_var=None):
         this.player_movement_logic()
         super().update(dt)
     

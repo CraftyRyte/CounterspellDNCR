@@ -2,6 +2,7 @@ from . import entity
 from . import player
 from . import henchman
 from . import spawner
+from . import camera
 import pygame as pyg
 
 def blit_text(surface, text, pos, color=pyg.Color("black"), font_size=32):

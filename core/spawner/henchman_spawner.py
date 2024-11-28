@@ -10,17 +10,15 @@ class HenchmanSpawner(spw.SpawnEntity):
         super().__init__(henchman_prefab, spawn_rate)
         this.spawn_radius = spawn_radius
     
-    def update(this, dt, player_center, surface):
+    def update(this, dt, player_center, surface, group):
         import time
         
         if time.time() - this.prev_time >= this.spawn_rate:
-            this.spawn_entity(player_center, surface)
+            this.spawn_entity(player_center, surface, group)
             this.prev_time = time.time()
-        for entity in this.entities_spawned:
-            entity.group.update(dt, player_center)
             
     #TODO: Simplify, break into more functions
-    def spawn_entity(this, player_center, surface):
+    def spawn_entity(this, player_center, surface, group):
         import copy
         import random as rnd
         
@@ -33,6 +31,7 @@ class HenchmanSpawner(spw.SpawnEntity):
         rand_y = rnd.randint(ordinate_range[0], ordinate_range[1])
         
         new_ent.rect.center = (rand_x, rand_y)
+        group.add(new_ent)
 
         this.entities_spawned.append(new_ent)
     
@@ -58,8 +57,5 @@ class HenchmanSpawner(spw.SpawnEntity):
         y_range = (int(player_center[1] - radius), int(player_center[1] + radius))
         x_range = (int(player_center[0] - radius), int(player_center[0] + radius))
     
-        
-        print((x_range, y_range))
-        
         return (x_range, y_range)
 

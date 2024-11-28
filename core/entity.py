@@ -2,22 +2,20 @@ import pygame as pyg
 import math
 
 class Entity(pyg.sprite.Sprite):
-    def __init__(this, position: tuple, image_path:str, speed_magnitude):
-        super().__init__()
+    def __init__(this, position: tuple, image_path:str, speed_magnitude, *groups):
+        super().__init__(*groups)
         this.magnitude_speed = speed_magnitude
         this.position = pyg.math.Vector2(position)
         this.image = pyg.image.load(image_path).convert_alpha()
         this.og_image = this.image
         
         this.rect = this.image.get_frect(center=this.position)
-        this.group = pyg.sprite.GroupSingle(this)
         this.__display_surface__: pyg.Surface = pyg.display.get_surface()
         
         this.velocity = pyg.math.Vector2(0, 0)
 
     def update(this, dt):
         this.__display_surface__: pyg.Surface = pyg.display.get_surface()
-        this.__display_surface__.blit(this.image, this.rect)
         this.move(dt)
     
     def move(this, dt):
