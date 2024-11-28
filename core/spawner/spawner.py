@@ -24,6 +24,6 @@ class SpawnEntity:
             entity.group.update(dt)
 
     def spawn_entity(this):
-        new_ent = copy.peepcopy(this.entity)
+        new_ent = copy.deepcopy(this.entity)
         this.entities_spawned.append(new_ent)
         

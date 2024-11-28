@@ -27,7 +27,7 @@ class HenchmanSpawner(spw.SpawnEntity):
         abscissa_range = this.get_spawn_range(player_center, surface, this.spawn_radius)[0]
         ordinate_range = this.get_spawn_range(player_center, surface, this.spawn_radius)[1]
         
-        new_ent: ent.Entity = copy.peepcopy(this.entity)
+        new_ent: ent.Entity = copy.deepcopy(this.entity)
         
         rand_x = rnd.randint(abscissa_range[0], abscissa_range[1])
         rand_y = rnd.randint(ordinate_range[0], ordinate_range[1])
