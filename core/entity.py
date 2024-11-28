@@ -28,13 +28,23 @@ class Entity(pyg.sprite.Sprite):
         self.rect = self.image.get_frect(center=self.position)
     
     @staticmethod
-    def determine_rotation_angles(pos_tm: tuple, entity_pos):
+    def determine_rotation_angles(pos_tm: tuple, entity_pos, rotational_offset=0):
         mx, my = pos_tm
         px, py = entity_pos
-        ydiff = mx - px
-        xdiff = my - py
-        radians = math.atan2(ydiff, xdiff)
-        angles = (180 / math.pi) * radians + 180
+        dy,dx = mx - px,my - py
+        radians = math.atan2(dy, dx)
+        angles = (180 / math.pi) * radians + rotational_offset
         return angles
+
+    def rotate_towards_pos(self, pos):
+        angles = self.determine_rotation_angles(pos, self.rect.center, 180)
+        self.rotate(angles)
+    
+    def move_towards_pos(self, pos):
+        mousex, mousey = pos
+
+        direction = pyg.math.Vector2(mousex - self.position.x, mousey - self.position.y).normalize()
+
+        self.velocity = direction * self.magnitude_speed
 
         
