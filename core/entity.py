@@ -7,6 +7,7 @@ class Entity(pyg.sprite.Sprite):
         this.magnitude_speed = speed_magnitude
         this.position = pyg.math.Vector2(position)
         this.image = pyg.image.load(image_path).convert_alpha()
+        this.image_path = image_path
         this.og_image = this.image
         
         this.rect = this.image.get_frect(center=this.position)
@@ -39,7 +40,7 @@ class Entity(pyg.sprite.Sprite):
         angles = this.determine_rotation_angles(pos, this.rect.center, 180)
         this.rotate(angles)
     
-    def move_towards_pos(this, pos):
+    def  move_towards_pos(this, pos):
         mousex, mousey = pos
 
         direction = pyg.math.Vector2(mousex - this.position.x, mousey - this.position.y).normalize()

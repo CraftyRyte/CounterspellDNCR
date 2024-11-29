@@ -19,16 +19,17 @@ class HenchmanSpawner(spw.SpawnEntity):
             
     #TODO: Simplify, break into more functions
     def spawn_entity(this, player_center, surface, group):
-        import copy
+
         import random as rnd
+        from core.henchman import Henchman
         
-        abscissa_range = this.get_spawn_range(player_center, surface, this.spawn_radius)[0]
-        ordinate_range = this.get_spawn_range(player_center, surface, this.spawn_radius)[1]
+        abscissa_range = this.get_spawn_range(player_center, surface, spawn_radius=this.spawn_radius, offset=group.camera_offset)[0]
+        ordinate_range = this.get_spawn_range(player_center, surface, spawn_radius=this.spawn_radius, offset=group.camera_offset)[1]
         
-        new_ent: ent.Entity = copy.deepcopy(this.entity)
+        new_ent: Henchman = Henchman(this.entity.rect.center, this.entity.image_path, this.entity.magnitude_speed)
         
-        rand_x = rnd.randint(abscissa_range[0], abscissa_range[1])
-        rand_y = rnd.randint(ordinate_range[0], ordinate_range[1])
+        rand_x = rnd.randrange(abscissa_range[0], abscissa_range[1])
+        rand_y = rnd.randrange(ordinate_range[0], ordinate_range[1])
         
         new_ent.rect.center = (rand_x, rand_y)
         group.add(new_ent)
@@ -37,10 +38,10 @@ class HenchmanSpawner(spw.SpawnEntity):
     
     @staticmethod
     #TODO: Write test for this functions
-    def get_spawn_range(player_center, surface: pyg.Surface, spawn_radius=None) -> tuple[tuple, tuple]:
-        from .. import is_wrong_range
+    def get_spawn_range(player_center, surface: pyg.Surface, spawn_radius=None, offset=0) -> tuple[tuple, tuple]:
         #TODO: Rewrite using no nesting
         radius = spawn_radius
+        player_center += offset
         if spawn_radius == None:
             w, h = surface.get_size()
             

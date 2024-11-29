@@ -18,16 +18,19 @@ player = core.player.Player((width / 2, height / 2), "assets/sprites/Player.png"
 player.velocity = pyg.math.Vector2(0, 0)
 
 # Sprite groups
-agroup = core.camera.cam3d.Cam3DEffect(player)
+agroup = core.camera.cam3d.Cam3DEffect("assets/sprites/ground.png",player)
 
 # Entity Spawner test
-test_spawner = core.spawner.henchman_spawner.HenchmanSpawner(core.henchman.Henchman((width/2, height/2), "assets/sprites/henchman1.png", 300), 4, 50)
+test_spawner = core.spawner.henchman_spawner.HenchmanSpawner(core.henchman.Henchman((width/2, height/2), "assets/sprites/henchman1.png", 300), 4, spawn_radius=25)
 
 # Main game loop
 running = True
 not_overlapping = True
 clock = pyg.time.Clock()
 prev_time = time.time()
+
+#!tEMP VAR
+to_spawn = False
 
 if __name__ == "__main__":
     while running:
@@ -37,17 +40,21 @@ if __name__ == "__main__":
         for event in pyg.event.get():
             if event.type == pyg.QUIT:
                 running = False
-
-        # test_spawner.update(dt, player.rect.center, screen, agroup)
+            if event.type == pyg.KEYDOWN:
+                if event.key == pyg.K_l:
+                    to_spawn = not to_spawn
+                
+        if to_spawn:
+            test_spawner.update(dt, player.rect.center, screen, agroup)
         agroup.update(dt, player.rect.center)
         
         # Fill the screen with a color (RGB)
         screen.fill((255, 255, 255))
         
-        agroup.center_target_camera(player)
-        agroup.draw()
+        agroup.draw(player)
         
         core.blit_text(screen, clock.get_fps(), (10, 10))
+        core.blit_text(screen, to_spawn, (10, 40))
 
         # Update the display
         pyg.display.flip()
